@@ -12,10 +12,22 @@ from datetime import timedelta
 import random
 import logging
 from logging.handlers import RotatingFileHandler
+import json
 
 import twitter
 
-def setup_logging( level=logging.DEBUG, filename='/var/log/dog.log', format="%(asctime)s - %(levelname)s :: %(message)s"):
+# load the twitter messages
+good_dog_messages = open('good_dog.txt').readlines()
+bad_dog_messages = open('bad_dog.txt').readlines()
+
+# load the last message id
+with open('config.json', 'r') as fd:
+    config = json.load(fd)
+
+def setup_logging(  level=logging.DEBUG, 
+                    filename='/var/log/dog.log', 
+                    format="%(asctime)s - %(levelname)s :: %(message)s",
+                    rotate_logs=False):
     """ Setup Logging
             For logging from multiple files
     """
@@ -23,19 +35,19 @@ def setup_logging( level=logging.DEBUG, filename='/var/log/dog.log', format="%(a
     log.setLevel(logging.DEBUG)
 
     log_formatter = logging.Formatter(format)
-    # so we can log from different files / processes
-    txt_handler = RotatingFileHandler(filename, backupCount=5)
-    txt_handler.doRollover()
+
+    # creates a new log file for each running instance (and renames old one)
+    if rotate_logs:
+        txt_handler = RotatingFileHandler(filename, backupCount=5)
+        txt_handler.doRollover()
+    else:
+        txt_handler = logging.FileHandler(filename)
     txt_handler.setFormatter(log_formatter)
 
     log.addHandler(txt_handler)
     log.info("logger initialised")
 
     return txt_handler
-
-# load the twitter messages
-good_dog_messages = open('good_dog.txt').readlines()
-bad_dog_messages = open('bad_dog.txt').readlines()
 
 def get_random_bark( bark_type=None ):
     """ Return a random bark
@@ -90,7 +102,7 @@ def respond_bark(api, reply_interval=timedelta(minutes=0.5)):
     n_secs = reply_interval.seconds if type(reply_interval) is timedelta else 30
     doglog.debug('reply interval %d' % n_secs)
 
-    last_id = 1
+    last_id = config['last_id']
 
     while True:
         # get new mentions
@@ -105,6 +117,13 @@ def respond_bark(api, reply_interval=timedelta(minutes=0.5)):
 
             doglog.debug( 'posting reply to %s - "%s"' % ( m.user.name, update ) )
             status = api.PostUpdates( update )
+
+        config['last_id'] = last_id
+        with open(CONF_FILE) as fd:
+            json.dump(config, fd)
+
+        # wait a bit before zipping round again
+        time.sleep(reply_interval)
 
 if __name__ == '__main__':
     pass
