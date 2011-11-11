@@ -1,0 +1,21 @@
+ROBOT DOG TWITTER THING
+=======================
+
+This is a Python twitter daemon in the guise of a fictional dog. 
+When my computer is on, the daemon should randomly tweet dog like
+tweets and also respond to mentions. That's the plan anyway.
+
+REQUIRES
+--------
+
+python > 2.6
+python-twitter
+python-daemon as per PEP 3143
+
+A twitter account.
+
+SETUP
+-----
+TBD
+
+
