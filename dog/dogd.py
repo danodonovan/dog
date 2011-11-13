@@ -10,7 +10,7 @@ import sys
 import time
 import json
 import logging
-from multiprocessing import Process
+from threading import Thread 
 
 import daemon
 from daemon.pidfile import TimeoutPIDLockFile
@@ -49,10 +49,10 @@ daemonContext = daemon.DaemonContext(
 with daemonContext:
     # one process to send random barks, one to respond to incoming tweets
     doglog.debug("starting random bark process")
-    rand_b = Process(target=random_bark_loop, args=(api,))
+    rand_b = Thread(target=random_bark_loop, args=(api,))
 
     doglog.debug("starting respond bark process")
-    resp_b = Process(target=respond_bark, args=(api,))
+    resp_b = Thread(target=respond_bark, args=(api,))
 
     rand_b.start()
     resp_b.start()
