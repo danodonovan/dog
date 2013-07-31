@@ -24,8 +24,8 @@ bad_dog_messages = open('bad_dog.txt').readlines()
 with open('config.json', 'r') as fd:
     config = json.load(fd)
 
-def setup_logging(  level=logging.DEBUG, 
-                    filename='/var/log/dog.log', 
+def setup_logging(  level=logging.DEBUG,
+                    filename='/var/log/dog.log',
                     format="%(asctime)s - %(levelname)s :: %(message)s",
                     rotate_logs=False):
     """ Setup Logging
@@ -108,12 +108,12 @@ def respond_bark(api, reply_interval=timedelta(minutes=0.5)):
         # get new mentions
         mentions = api.GetMentions( since_id=last_id )
         last_id = mentions[-1].id if mentions else last_id
-    
+
         # process mentions and send replies
         for m in mentions:
-    
-            tweet = get_random_bark()
-            update = '@%s %s' % (m.user.name, tweet)
+
+            tweet = get_random_bark(bark_type='good')
+            update = '@%s %s' % (m.user.screen_name, tweet)
 
             doglog.debug( 'posting reply to %s - "%s"' % ( m.user.name, update ) )
             status = api.PostUpdates( update )
@@ -128,4 +128,4 @@ def respond_bark(api, reply_interval=timedelta(minutes=0.5)):
 if __name__ == '__main__':
     pass
 
-    
+
