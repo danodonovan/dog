@@ -1,0 +1,8 @@
+{
+    "ACCESS_TOKEN_KEY": "your_access_token_key",
+    "ACCESS_TOKEN_SECRET": "your_access_token_secret", 
+    "CONSUMER_KEY": "your_consumer_key", 
+    "CONSUMER_SECRET": "your_consumer_secret", 
+    "LOG_FILE": "dog.log", 
+    "last_id": 1
+}
