@@ -15,7 +15,7 @@ import twitter
 from dog import DogBot, setup_logging
 
 # load the last message id
-with open('good.config.json', 'r') as fd:
+with open('config.json', 'r') as fd:
     config = json.load(fd)
 
 # set up the logging
