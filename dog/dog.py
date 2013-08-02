@@ -1,33 +1,114 @@
 #!/usr/bin/env python
 # encoding: utf-8
 """
-dog.py
+dog_2.py
 
-Created by Daniel O'Donovan on 2011-11-10.
-Copyright (c) 2011 __MyCompanyName__. All rights reserved.
+Created by Daniel O'Donovan in 2013 sometime
+Copyright (c) 2013. All rights reserved.
 """
-
 import time
-from datetime import timedelta
 import random
+from datetime import timedelta
 import logging
-from logging.handlers import RotatingFileHandler
-import json
 
 import twitter
 
-# load the twitter messages
-good_dog_messages = open('good_dog.txt').readlines()
-bad_dog_messages = open('bad_dog.txt').readlines()
 
-# load the last message id
-with open('config.json', 'r') as fd:
-    config = json.load(fd)
+class TwitterBot(object):
+    
+    def __init__(self, api, logger=None):
+        self.api = api
+        self.logger = logger
+        
+    def follow_followers(self):
+        """ follow_followers
+        Follow everyone who follows you
+        """
+        friends_names = [u.screen_name for u in self.api.GetFriends()]
+        for user in self.api.GetFollowers():
+            if user.screen_name not in friends_names:
+                self.logger.debug('new follow %s' % user.screen_name)
+                status = self.api.CreateFriendship(user.user_id)
+                self.logger.debug('status: %s' % status)
+                
+    def respond(self, user, message):
+        """ respond
+        Respond to a received user
+        """
+        update = '@%s %s' % (user, message)
+        self.logger.debug('respond "%s"' % update)
+        status = self.api.PostUpdates(update)
+        self.logger.debug('status: %s' % status)
 
-def setup_logging(  level=logging.DEBUG,
-                    filename='/var/log/dog.log',
-                    format="%(asctime)s - %(levelname)s :: %(message)s",
-                    rotate_logs=False):
+    def tweet(self, message):
+        """ tweet
+        send a tweet
+        """
+        self.logger.debug('tweet "%s"' % message)
+        status = self.api.PostUpdates(message)
+        self.logger.debug('status: %s' % status)
+
+
+class DogBot(TwitterBot):
+    
+    def __init__(self, api, last_id, logger=None, good_dog_file='good_dog.txt', bad_dog_file='bad_dog.txt'):
+        
+        super(DogBot, self).__init__(api, logger)
+
+        self.last_id = last_id
+        self.good_dog_messages = open(good_dog_file).readlines()
+        self.bad_dog_messages = open(bad_dog_file).readlines()
+
+        # daemon bits
+        self.stdin_path = '/dev/null'
+        self.stdout_path = '/dev/tty'
+        self.stderr_path = '/dev/tty'
+        self.pidfile_path =  '/var/run/testdaemon.pid'
+        self.pidfile_timeout = 5
+
+    def random_bark(self, bark_type=None):
+        """ random_bark
+        bark_type: 'good' or 'bad'
+        returns a random bark
+        """
+        if bark_type is None:
+            bark_type = random.choice(['good', 'bad'])
+
+        bark_type = bark_type.lower()
+        if bark_type in ('good', 'bad'):
+            if bark_type == 'good':
+                return random.choice(self.good_dog_messages).strip()
+            else:
+                return random.choice(self.bad_dog_messages).strip()
+    
+    def run(self, wait_interval=timedelta(hours=1.3)):
+        # if python had decent threading I would create two threads, 
+        # one to respond to mentions, one to tweet randomly
+        while True:
+        
+            # get new mentions
+            mentions = self.api.GetMentions(since_id=self.last_id)
+            self.m = mentions
+
+            # process mentions and send replies
+            for m in mentions:
+
+                message = self.random_bark(bark_type='good')
+                self.respond(m.user.screen_name, message)
+            
+            # update so don't resend tweets
+            self.last_id = mentions[-1].id if mentions else last_id
+
+            # update status
+            self.tweet(self.random_bark())
+
+            # wait a bit before zipping round again
+            time.sleep(wait_interval.seconds)
+
+def setup_logging(level=logging.DEBUG,
+                  filename='/var/log/dog.log',
+                  format="%(asctime)s - %(levelname)s :: %(message)s",
+                  rotate_logs=False):
     """ Setup Logging
             For logging from multiple files
     """
@@ -48,84 +129,3 @@ def setup_logging(  level=logging.DEBUG,
     log.info("logger initialised")
 
     return txt_handler
-
-def get_random_bark( bark_type=None ):
-    """ Return a random bark
-            Input: (optional) 'good' or 'bad'
-    """
-    doglog = logging.getLogger('dogd')
-    doglog.debug('get_random_bark %s' % bark_type)
-
-    if bark_type and bark_type.lower() in ('good', 'bad'):
-        if bark_type.lower() is 'good':
-            messages = good_dog_messages
-        else:
-            messages = bad_dog_messages
-    else:
-        messages = good_dog_messages + bad_dog_messages
-
-    return random.choice(messages).strip()
-
-def random_bark_loop(api, bark_interval=timedelta(hours=0.7)):
-    """ Random Bark loop
-            This randomly posts a message in to twitter stream
-            Input: Twitter API object
-    """
-    doglog = logging.getLogger('dogd')
-    doglog.debug('random_bark_loop')
-
-    # execute once a minute
-    n_secs = bark_interval.seconds if type(bark_interval) is timedelta else 2520
-    doglog.debug('bark interval %d' % n_secs)
-
-    # the main loop
-    while True:
-        # update status
-        tweet = get_random_bark()
-        doglog.debug('posting status - "%s"' % tweet)
-
-        status = api.PostUpdate( tweet )
-
-        if status:
-            doglog.debug('status sent - "%s"' % status.text)
-
-        # wait
-        time.sleep( n_secs )
-
-def respond_bark(api, reply_interval=timedelta(minutes=0.5)):
-    """ Respond Bark
-            This function responds to a received tweet
-    """
-    doglog = logging.getLogger('dogd')
-    doglog.debug('respond_bark')
-
-    n_secs = reply_interval.seconds if type(reply_interval) is timedelta else 30
-    doglog.debug('reply interval %d' % n_secs)
-
-    last_id = config['last_id']
-
-    while True:
-        # get new mentions
-        mentions = api.GetMentions( since_id=last_id )
-        last_id = mentions[-1].id if mentions else last_id
-
-        # process mentions and send replies
-        for m in mentions:
-
-            tweet = get_random_bark(bark_type='good')
-            update = '@%s %s' % (m.user.screen_name, tweet)
-
-            doglog.debug( 'posting reply to %s - "%s"' % ( m.user.name, update ) )
-            status = api.PostUpdates( update )
-
-        config['last_id'] = last_id
-        with open(CONF_FILE) as fd:
-            json.dump(config, fd)
-
-        # wait a bit before zipping round again
-        time.sleep(reply_interval)
-
-if __name__ == '__main__':
-    pass
-
-
