@@ -12,7 +12,7 @@ import logging
 from daemon import runner
 import twitter
 
-from dog_2 import DogBot, setup_logging
+from dog import DogBot, setup_logging
 
 # load the last message id
 with open('good.config.json', 'r') as fd:
