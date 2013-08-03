@@ -1,4 +1,4 @@
-dog/secrets.py
 dog/scrap.py
+dog/config.json
 *.pyc
 venv
