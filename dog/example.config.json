@@ -4,5 +4,5 @@
     "CONSUMER_KEY": "your_consumer_key", 
     "CONSUMER_SECRET": "your_consumer_secret", 
     "LOG_FILE": "dog.log", 
-    "last_id": 1
+    "last_id": 1,
 }
