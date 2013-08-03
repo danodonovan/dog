@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 """
-dogd.py
+dog_runner.py
 
 Created by Daniel O'Donovan in 2013 somtime.
 Copyright (c) 2013. All rights reserved.
@@ -9,22 +9,27 @@ Copyright (c) 2013. All rights reserved.
 import json
 import logging
 
-from daemon import runner
 import twitter
 
-from dog import DogBot, setup_logging
+from dog import DogBot
 
 # load the last message id
 with open('config.json', 'r') as fd:
     config = json.load(fd)
 
 # set up the logging
-doglog_handler = setup_logging(filename=config['LOG_FILE'])
-
 doglog = logging.getLogger('dogd')
 doglog.setLevel(logging.DEBUG)
 
-# set up the twitter api
+if 'LOG_FILE' in config:
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s :: %(message)s",)
+    handler = logging.FileHandler(config['LOG_FILE'])
+    handler.setFormatter(formatter)
+    doglog.addHandler(handler)
+else:
+    logging.basicConfig()
+
+# authenticate with the twitter api
 api = twitter.Api(
     consumer_key=config['CONSUMER_KEY'],
     consumer_secret=config['CONSUMER_SECRET'],
@@ -34,9 +39,9 @@ api = twitter.Api(
 
 db = DogBot(api, config['last_id'], logger=doglog)
 
-daemon_runner = runner.DaemonRunner(db)
-#This ensures that the logger file handle does not get closed during daemonization
-daemon_runner.daemon_context.files_preserve=[doglog]
-daemon_runner.do_action()
+db.run_once()
 
-
+# update the config before we quit
+with open('config.json', 'w') as fd:
+    config['last_id'] = db.last_id
+    json.dump(config, fd)
