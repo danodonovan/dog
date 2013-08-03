@@ -1,0 +1,5 @@
+#! /bin/bash    
+cd $HOME/dog/venv
+source bin/activate
+cd $HOME/dog/dog
+python dog_runner.py
